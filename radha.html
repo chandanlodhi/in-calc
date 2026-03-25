@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Radha Naam Jaap Counter 🌺</title>
+    <link rel="icon" href="https://i.pinimg.com/1200x/e1/98/04/e19804333c5cc7a2156cc6ec364abe32.jpg">
+    <style>
+        /* CSS for Devotional Theme and Layout */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-image:url(https://i.pinimg.com/736x/8f/e6/d5/8fe6d5eed56ff18b6877dcf7779c593e.jpg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            color: #880e4f; /* Dark Magenta Text */
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            border: 5px solid #ffccbc; /* Light Peach Border */
+            max-width: 400px;
+            width: 90%;
+        }
+        h1 {
+            color: #d81b60; /* Deep Pink Header */
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+        h2 {
+            margin-top: 15px;
+            font-size: 1.5em;
+        }
+        .counter-display {
+            font-size: 3em;
+            font-weight: bold;
+            color: #4a148c; /* Dark Purple for Count */
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #fce4ec; /* Very Light Pink */
+            border-radius: 10px;
+            border: 1px solid #ff80ab;
+        }
+        .timer-display {
+            font-size: 1.2em;
+            color: #e65100; /* Orange for Timer */
+            margin-bottom: 20px;
+        }
+        #jaap-button {
+            background-color: #ffb74d; /* Light Orange/Yellow Button */
+            color: #880e4f;
+            border: none;
+            padding: 45px 45px;
+            font-size: 1.9em;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px #e65100;
+        }
+        #jaap-button:active {
+            box-shadow: 0 1px #e65100;
+            transform: translateY(3px);
+        }
+        #jaap-button:hover {
+            background-color: #ffa000; /* Darker Yellow on Hover */
+        }
+        .reset-button {
+            margin-top: 20px;
+            background: none;
+            border: 1px solid #d81b60;
+            color: #d81b60;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+        .reset-button:hover {
+            background-color: #d81b60;
+            color: white;
+        }
+        /* Timer Status Indicator */
+        .status-running { color: green; font-weight: bold; }
+        .status-stopped { color: red; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+	<audio controls loop autoplay>
+  	<source src="radha.mp3" type="audio/mpeg">
+	</audio>
+        <h1>🙏श्री राधा रानी📿नाम जाप🙏</h1>
+
+        <h2>कुल जाप संख्या:</h2>
+        <div id="counter" class="counter-display">0</div>
+
+        <div class="timer-display">
+            जाप समय: <span id="timer-value">00:00:00</span>
+            <br>
+            स्थिति: <span id="timer-status" class="status-stopped">रुका हुआ</span>
+        </div>
+
+        <button id="jaap-button">राधा राधा</button>
+        
+        <!--<button class="reset-button" onclick="resetCounter()">रीसेट करें</button>-->
+    </div>
+
+    <script>
+        // Global variables for counter and timer
+        const STORAGE_KEY = 'radhaJaapCount';
+        let jaapCount = 0;
+        let seconds = 0;
+        let timerInterval = null;
+        let idleTimeout = null;
+        const IDLE_TIME_LIMIT = 10000; // 10 seconds in milliseconds (for automatic stop)
+
+        const counterElement = document.getElementById('counter');
+        const timerValueElement = document.getElementById('timer-value');
+        const timerStatusElement = document.getElementById('timer-status');
+        const jaapButton = document.getElementById('jaap-button');
+
+        // --- 1. Permanent Storage (Local Storage) ---
+        function loadCount() {
+            const storedCount = localStorage.getItem(STORAGE_KEY);
+            if (storedCount) {
+                jaapCount = parseInt(storedCount);
+                counterElement.textContent = jaapCount;
+            }
+        }
+
+        function saveCount() {
+            localStorage.setItem(STORAGE_KEY, jaapCount);
+        }
+
+        // --- 2. Timer Functions ---
+        function formatTime(totalSeconds) {
+            const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(totalSeconds % 60).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function startTimer() {
+            if (timerInterval) return; // Already running
+            
+            timerStatusElement.textContent = 'चल रहा है';
+            timerStatusElement.className = 'status-running';
+
+            timerInterval = setInterval(() => {
+                seconds++;
+                timerValueElement.textContent = formatTime(seconds);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timerStatusElement.textContent = 'रुका हुआ';
+            timerStatusElement.className = 'status-stopped';
+        }
+
+        function resetIdleTimer() {
+            // Stop the previous timeout
+            if (idleTimeout) {
+                clearTimeout(idleTimeout);
+            }
+            // Start a new timeout. If this runs, it means user was idle.
+            idleTimeout = setTimeout(() => {
+                stopTimer();
+                console.log('Timer stopped due to 10-second inactivity.');
+            }, IDLE_TIME_LIMIT);
+        }
+        
+        // --- 3. Jaap Counter Function ---
+        function incrementJaap() {
+            // Start the timer only when jaap is done
+            if (!timerInterval) {
+                startTimer();
+            }
+
+            // Reset the idle timer on every click
+            resetIdleTimer();
+
+            jaapCount++;
+            counterElement.textContent = jaapCount;
+            saveCount(); // Save the new count
+        }
+
+        // --- 4. Reset Function ---
+        function resetCounter() {
+            if (confirm("क्या आप जाप की संख्या और समय दोनों को रीसेट करना चाहते हैं?")) {
+                stopTimer();
+                seconds = 0;
+                jaapCount = 0;
+                counterElement.textContent = 0;
+                timerValueElement.textContent = formatTime(0);
+                localStorage.removeItem(STORAGE_KEY);
+                alert("जाप संख्या और समय रीसेट कर दिया गया है।");
+            }
+        }
+        
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCount(); // Load count on page start
+            jaapButton.addEventListener('click', incrementJaap);
+        });
+
+    </script>
+</body>
+</html>
